@@ -20,7 +20,14 @@ export default function Home() {
 
   useEffect(() => {
     if (connected) {
-      router.push('/dashboard'); 
+      // Revisamos si ya existe un perfil guardado en la memoria
+      const perfilGuardado = localStorage.getItem('waypark_user_profile');
+      
+      if (perfilGuardado) {
+        router.push('/dashboard'); // Si ya tiene perfil, entra directo
+      } else {
+        router.push('/registro'); // Si es nuevo, lo mandamos a registrarse
+      }
     }
   }, [connected, router]);
 

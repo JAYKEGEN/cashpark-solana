@@ -9,10 +9,7 @@ export default function TiempoEstacionamiento() {
   const router = useRouter();
   
   const [segundosTranscurridos, setSegundosTranscurridos] = useState(0);
-  const [costoActual, setCostoActual] = useState(0);
-  
-  // TARIFA DE HACKATHON: $1 peso por segundo para que se vea el cobro en vivo
-  const TARIFA_POR_SEGUNDO = 1.00;
+  const [costoActual, setCostoActual] = useState(12); // Empezamos con la tarifa mínima de 12
 
   useEffect(() => {
     if (!connected) {
@@ -20,41 +17,36 @@ export default function TiempoEstacionamiento() {
       return;
     }
 
-    // 1. Buscamos si ya hay un ticket activo en la memoria del celular
-    let tiempoInicio = localStorage.getItem('inicio_ticket_waypark');
-    
-    // 2. Si es un ticket nuevo, guardamos la hora actual exacta
+    // Buscamos la hora en la que entró
+    const tiempoInicio = localStorage.getItem('inicio_ticket_waypark');
     if (!tiempoInicio) {
-      tiempoInicio = Date.now().toString();
-      localStorage.setItem('inicio_ticket_waypark', tiempoInicio);
+      router.push('/dashboard'); 
+      return;
     }
 
-    // 3. Calculamos la diferencia entre la hora actual y la hora de entrada
     const calcularTiempo = () => {
       const ahora = Date.now();
-      const diferenciaSegundos = Math.floor((ahora - parseInt(tiempoInicio as string)) / 1000);
+      const diferenciaSegundos = Math.floor((ahora - parseInt(tiempoInicio)) / 1000);
       setSegundosTranscurridos(diferenciaSegundos);
+      
+      // LÓGICA DE COBRO: $12 por hora o fracción
+      let horasCobradas = Math.ceil(diferenciaSegundos / 3600);
+      if (horasCobradas === 0) horasCobradas = 1; // Mínimo se cobra 1 hora ($12)
+      
+      setCostoActual(horasCobradas * 12);
     };
 
-    calcularTiempo(); // Arrancamos el cálculo
-    const intervalo = setInterval(calcularTiempo, 1000); // Actualizamos cada segundo
-
+    calcularTiempo(); // Ejecuta inmediatamente
+    const intervalo = setInterval(calcularTiempo, 1000); // Actualiza cada segundo
+    
     return () => clearInterval(intervalo);
   }, [connected, router]);
-
-  useEffect(() => {
-    setCostoActual(segundosTranscurridos * TARIFA_POR_SEGUNDO);
-  }, [segundosTranscurridos]);
 
   const formatearTiempo = (totalSegundos: number) => {
     const horas = Math.floor(totalSegundos / 3600);
     const minutos = Math.floor((totalSegundos % 3600) / 60);
     const segundos = totalSegundos % 60;
     return `${horas.toString().padStart(2, '0')}:${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
-  };
-
-  const simularSalida = () => {
-    router.push('/ticket-salida'); 
   };
 
   return (
@@ -69,7 +61,6 @@ export default function TiempoEstacionamiento() {
         <div className="relative flex items-center justify-center w-72 h-72">
           <div className="absolute w-full h-full rounded-full border-[12px] border-blue-900 opacity-30 animate-pulse"></div>
           <div className="absolute w-64 h-64 rounded-full border-4 border-[#3b82f6] shadow-[0_0_30px_rgba(59,130,246,0.5)]"></div>
-          
           <h1 className="text-5xl font-mono font-bold tracking-tighter drop-shadow-lg">
             {formatearTiempo(segundosTranscurridos)}
           </h1>
@@ -81,12 +72,12 @@ export default function TiempoEstacionamiento() {
         <p className="text-4xl font-extrabold text-[#3b82f6] transition-all duration-300">
           ${costoActual.toFixed(2)} <span className="text-lg text-gray-400 font-normal">MXN</span>
         </p>
-        <p className="text-xs text-gray-400 mt-2 text-yellow-400">Tarifa Dinámica Activa</p>
+        <p className="text-xs text-gray-400 mt-2 text-yellow-400">Tarifa: $12.00 MXN / Hora o fracción</p>
       </div>
 
       <div className="pb-8">
-        <button
-          onClick={simularSalida}
+        <button 
+          onClick={() => router.push('/ticket-salida')} 
           className="w-full bg-white text-[#0d1b2a] text-lg font-bold py-5 rounded-full shadow-xl hover:bg-gray-200 active:scale-95 transition-all flex justify-center items-center space-x-2"
         >
           <span>Finalizar y Pagar Salida</span>
