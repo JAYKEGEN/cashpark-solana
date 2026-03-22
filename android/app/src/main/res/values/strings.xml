@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">CashPark WayLern</string>
+    <string name="title_activity_main">CashPark WayLern</string>
+    <string name="package_name">com.cashpark.waylern</string>
+    <string name="custom_url_scheme">com.cashpark.waylern</string>
+</resources>
