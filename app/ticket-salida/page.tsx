@@ -128,7 +128,7 @@ export default function TicketSalida() {
               <div>
                 <p className="font-semibold text-gray-900">Wallet conectada:</p>
                 <p className="text-xs font-mono text-gray-500 bg-gray-100 p-1 rounded">
-                  {publicKey.toBase58().slice(0,6)}...{publicKey.toBase58().slice(-6)}
+                  {publicKey ? `${publicKey.toBase58().slice(0, 6)}...${publicKey.toBase58().slice(-6)}` : 'Cargando...'}
                 </p>
               </div>
             </div>
