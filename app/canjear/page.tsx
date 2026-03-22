@@ -11,8 +11,18 @@ export default function CanjearPuntos() {
   const [totalPuntos, setTotalPuntos] = useState('0.0000');
 
   useEffect(() => {
-    const puntos = parseFloat(localStorage.getItem('waypark_puntos_totales') || '0');
-    setTotalPuntos(puntos.toFixed(4));
+    try {
+      const guardado = localStorage.getItem('waypark_puntos_totales');
+      if (guardado) {
+        // Desencriptamos con atob
+        const decodificado = atob(guardado);
+        const valor = parseFloat(decodificado);
+        setTotalPuntos(isNaN(valor) ? '0.0000' : valor.toFixed(4));
+      }
+    } catch (e) {
+      // Si alguien manipula el F12 con texto normal, se bloquea y marca 0
+      setTotalPuntos('0.0000'); 
+    }
   }, []);
 
   // --- LISTA DE RECOMPENSAS CORREGIDA (Con RUTAS SIMPLES DE TEXTO) ---

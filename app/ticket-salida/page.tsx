@@ -15,9 +15,11 @@ export default function TicketSalida() {
   const [error, setError] = useState<string | null>(null);
   const [pagoConfirmado, setPagoConfirmado] = useState(false);
   const [signatureTransaction, setSignatureTransaction] = useState<string | null>(null);
-  const [puntosGanados, setPuntosGanados] = useState(0);
 
-  // ESTADO DINÁMICO: Aquí guardamos los cálculos reales
+  // ESTADO DEL TEMPORIZADOR (600 segundos = 10 minutos)
+  // TIP: Cámbialo a 10 para probar rápido en tu demo
+  const [tiempoRestante, setTiempoRestante] = useState(600);
+
   const [resumen, setResumen] = useState({
     fechaEntrada: 'Calculando...',
     fechaSalida: 'Calculando...',
@@ -26,6 +28,7 @@ export default function TicketSalida() {
     costoSOL: 0
   });
 
+  const [puntosGanados, setPuntosGanados] = useState(0);
   const walletEmpresa = new PublicKey('9RuwDQGNRpZ2Qf7nKiWcU1cL5BegPKCVsoAvhxah8SBf'); 
 
   useEffect(() => {
@@ -44,24 +47,18 @@ export default function TicketSalida() {
         hour: '2-digit', minute: '2-digit' 
       };
       
-      // Cálculo del tiempo transcurrido
       const diferenciaSegundos = Math.floor((fechaSalida.getTime() - fechaEntrada.getTime()) / 1000);
       const horas = Math.floor(diferenciaSegundos / 3600);
       const minutos = Math.floor((diferenciaSegundos % 3600) / 60);
       
-      // Cálculo del cobro
       let horasCobradas = Math.ceil(diferenciaSegundos / 3600);
-      if (horasCobradas === 0) horasCobradas = 1; // Mínimo 1 hora ($12)
+      if (horasCobradas === 0) horasCobradas = 1; 
       const costoMXN = horasCobradas * 12;
       
-      // Conversión: 1 SOL = $3000 MXN -> 12 MXN = 0.004 SOL
       const costoSOL = parseFloat((costoMXN / 3000).toFixed(4));
-
-      // LÓGICA DE PUNTOS (5% del costo en SOL)
       const calculoPuntos = parseFloat((costoSOL * 0.05).toFixed(4));
       setPuntosGanados(calculoPuntos);
 
-      // Actualizamos la pantalla con los datos reales
       setResumen({
         fechaEntrada: fechaEntrada.toLocaleDateString('es-MX', opcionesFecha),
         fechaSalida: fechaSalida.toLocaleDateString('es-MX', opcionesFecha),
@@ -71,6 +68,24 @@ export default function TicketSalida() {
       });
     }
   }, [connected, publicKey, router]);
+
+  // --- LÓGICA DEL TEMPORIZADOR ---
+  useEffect(() => {
+    let intervalo: NodeJS.Timeout;
+    if (pagoConfirmado && tiempoRestante > 0) {
+      intervalo = setInterval(() => {
+        setTiempoRestante((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(intervalo);
+  }, [pagoConfirmado, tiempoRestante]);
+
+  // Formatear segundos a MM:SS
+  const formatearTiempo = (segundos: number) => {
+    const min = Math.floor(segundos / 60);
+    const sec = segundos % 60;
+    return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+  };
 
   const ejecutarPagoDirecto = async () => {
     if (!connected || !publicKey) return;
@@ -93,25 +108,34 @@ export default function TicketSalida() {
       const signature = await sendTransaction(transaction, connection);
       setSignatureTransaction(signature);
       
-      // --- GUARDAR HISTORIAL Y PUNTOS EN MEMORIA ---
       const nuevaTx = {
         fecha: resumen.fechaSalida,
+        fechaEntrada: resumen.fechaEntrada, // <--- AÑADIMOS ESTO
+        tiempoTotal: resumen.tiempoTotal,   // <--- AÑADIMOS ESTO
         estacionamiento: 'ESTACIONAMIENTO WAYPARK #001',
         montoSOL: resumen.costoSOL,
         puntos: puntosGanados,
         firma: signature
       };
       
-      // Guardar en Historial
       const historialPrevio = JSON.parse(localStorage.getItem('waypark_historial') || '[]');
-      historialPrevio.unshift(nuevaTx); // unshift lo pone al principio de la lista
+      historialPrevio.unshift(nuevaTx); 
       localStorage.setItem('waypark_historial', JSON.stringify(historialPrevio));
 
-      // Sumar Puntos Totales
-      const puntosActuales = parseFloat(localStorage.getItem('waypark_puntos_totales') || '0');
-      localStorage.setItem('waypark_puntos_totales', (puntosActuales + puntosGanados).toFixed(4));
+      // --- LECTURA Y ESCRITURA OFUSCADA DE PUNTOS ---
+      let puntosActualesSeguros = 0;
+      try {
+        const guardado = localStorage.getItem('waypark_puntos_totales');
+        if (guardado) puntosActualesSeguros = parseFloat(atob(guardado)) || 0;
+      } catch (e) {
+        puntosActualesSeguros = 0;
+      }
+      
+      // Sumamos y encriptamos antes de guardar
+      const nuevosPuntos = (puntosActualesSeguros + puntosGanados).toFixed(4);
+      localStorage.setItem('waypark_puntos_totales', btoa(nuevosPuntos));
       // ----------------------------------------------
-
+      
       setTimeout(() => {
         setPagoConfirmado(true);
         setLoading(false);
@@ -131,24 +155,9 @@ export default function TicketSalida() {
         <h1 className="text-2xl font-extrabold tracking-wider mt-4">TICKET DE SALIDA</h1>
         <p className="text-gray-400 text-sm mt-1 font-serif italic">Resumen de visita</p>
       </div>
-      <div className="flex space-x-4">
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-[#0d1b2a] mb-1">Total a pagar:</p>
-              <div className="bg-green-100 text-green-800 py-2 px-4 rounded text-sm font-bold border border-green-200 flex flex-col items-center justify-center">
-                <span>{resumen.costoSOL} SOL</span>
-              </div>
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-semibold text-[#0d1b2a] mb-1">Puntos a ganar:</p>
-              <div className="bg-yellow-100 text-yellow-800 py-2 px-4 rounded text-sm font-bold border border-yellow-200 flex flex-col items-center justify-center">
-                <span>✨ +{puntosGanados} Pts</span>
-              </div>
-            </div>
-          </div>
 
       <div className="px-6 mt-8 space-y-8 flex-grow">
         
-        {/* TABLA DE RESUMEN DINÁMICA */}
         <div className="space-y-4">
           <div>
             <p className="text-sm font-semibold text-gray-600 mb-1">Fecha de entrada:</p>
@@ -160,14 +169,15 @@ export default function TicketSalida() {
           </div>
           <div className="flex space-x-4">
             <div className="flex-1">
-              <p className="text-sm font-semibold text-gray-600 mb-1">Tiempo total:</p>
-              <div className="bg-gray-200 text-gray-800 py-2 px-4 rounded text-sm font-medium">{resumen.tiempoTotal}</div>
-            </div>
-            <div className="flex-1">
               <p className="text-sm font-semibold text-[#0d1b2a] mb-1">Total a pagar:</p>
               <div className="bg-green-100 text-green-800 py-2 px-4 rounded text-sm font-bold border border-green-200 flex flex-col items-center justify-center">
                 <span>{resumen.costoSOL} SOL</span>
-                <span className="text-xs text-green-600">(${resumen.costoMXN} MXN)</span>
+              </div>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-semibold text-[#0d1b2a] mb-1">Puntos a ganar:</p>
+              <div className="bg-yellow-100 text-yellow-800 py-2 px-4 rounded text-sm font-bold border border-yellow-200 flex flex-col items-center justify-center">
+                <span>✨ +{puntosGanados} Pts</span>
               </div>
             </div>
           </div>
@@ -197,14 +207,35 @@ export default function TicketSalida() {
           </div>
         ) : (
           <div className="bg-[#93c5fd] p-8 rounded-[30px] shadow-2xl flex flex-col items-center animate-fade-in-up border-4 border-dashed border-[#0d1b2a]">
-            <div className="flex items-center space-x-2 mb-4 bg-green-100 text-green-800 px-3 py-1 rounded-full border border-green-200">
+            
+            <div className="flex items-center space-x-2 mb-2 bg-green-100 text-green-800 px-3 py-1 rounded-full border border-green-200">
               <span className="text-lg">✅</span> <span className="text-sm font-bold uppercase tracking-widest">Pago Validado</span>
             </div>
-            <h3 className="text-[#0d1b2a] font-extrabold text-xl mb-4">Su Código de Salida</h3>
-            <button onClick={() => router.push('/buen-viaje')} className="bg-white p-4 rounded-3xl shadow-inner mb-5 hover:scale-105 transition-transform" title="Click para simular escaneo en la pluma">
-              <QRCodeSVG value={`waypark-salida:${signatureTransaction}`} size={200} bgColor={"#FFFFFF"} fgColor={"#0d1b2a"} level={"L"} includeMargin={false} />
-            </button>
-            <p className="text-blue-900 text-sm font-medium text-center bg-white/50 p-3 rounded-lg">Presente este código en el lector para levantar la barrera.</p>
+
+            {/* RELOJ DE EXPIRACIÓN */}
+            <div className="mb-4 text-center">
+              <p className="text-sm text-blue-900 font-medium">Tiempo para salir:</p>
+              <p className={`text-3xl font-mono font-bold ${tiempoRestante < 60 ? 'text-red-600 animate-pulse' : 'text-[#0d1b2a]'}`}>
+                {formatearTiempo(tiempoRestante)}
+              </p>
+            </div>
+            
+            {tiempoRestante > 0 ? (
+              <>
+                <button onClick={() => router.push('/buen-viaje')} className="bg-white p-4 rounded-3xl shadow-inner mb-5 hover:scale-105 transition-transform" title="Click para simular escaneo">
+                  <QRCodeSVG value={`waypark-salida:${signatureTransaction}`} size={180} bgColor={"#FFFFFF"} fgColor={"#0d1b2a"} level={"L"} includeMargin={false} />
+                </button>
+                <p className="text-blue-900 text-xs font-medium text-center bg-white/50 p-3 rounded-lg">Presente este código en el lector para levantar la barrera.</p>
+              </>
+            ) : (
+              // ESTADO DE QR EXPIRADO
+              <div className="bg-red-100 p-6 rounded-2xl border-2 border-red-300 flex flex-col items-center text-center mt-2">
+                <span className="text-5xl mb-2">⏱️</span>
+                <h3 className="text-red-800 font-bold text-lg mb-1">Tu código expiró</h3>
+                <p className="text-red-600 text-sm">Excediste los 10 minutos de tolerancia. Por favor, genera un nuevo ticket de salida.</p>
+                <button onClick={() => window.location.reload()} className="mt-4 bg-red-600 text-white px-4 py-2 rounded-full font-bold text-sm">Actualizar Ticket</button>
+              </div>
+            )}
           </div>
         )}
       </div>

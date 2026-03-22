@@ -8,10 +8,19 @@ export default function Puntos() {
   const [totalPuntos, setTotalPuntos] = useState('0.0000');
 
   useEffect(() => {
-    const puntos = parseFloat(localStorage.getItem('waypark_puntos_totales') || '0');
-    setTotalPuntos(puntos.toFixed(4));
+    try {
+      const guardado = localStorage.getItem('waypark_puntos_totales');
+      if (guardado) {
+        // Desencriptamos con atob
+        const decodificado = atob(guardado);
+        const valor = parseFloat(decodificado);
+        setTotalPuntos(isNaN(valor) ? '0.0000' : valor.toFixed(4));
+      }
+    } catch (e) {
+      // Si alguien manipula el F12 con texto normal, se bloquea y marca 0
+      setTotalPuntos('0.0000'); 
+    }
   }, []);
-
   return (
     <div className="flex flex-col min-h-screen bg-gray-50 font-sans pb-24">
       
@@ -29,9 +38,17 @@ export default function Puntos() {
           <h2 className="text-5xl font-extrabold">{totalPuntos}</h2>
           <p className="text-sm mt-2 font-light">WayPark Points (WPP)</p>
           
-          <div className="mt-4 bg-white/20 backdrop-blur-sm rounded-lg py-2 px-4 inline-block border border-white/30">
-            <p className="text-xs font-bold text-yellow-300 flex items-center">
-              <span>⚠️</span> <span className="ml-1">Tus puntos vencen en 6 meses</span>
+          {/* BOTÓN O AVISO DE VENCIMIENTO CON FECHA EXACTA */}
+          <div className="mt-4 bg-[#0d1b2a]/30 backdrop-blur-sm border border-white/20 px-4 py-2 rounded-full inline-block">
+            <p className="text-xs text-blue-100 font-medium flex items-center">
+              <span className="mr-2">⚠️</span> 
+              Tus puntos caducan el: <strong className="ml-1">
+                {new Date(
+                  new Date().getFullYear(), 
+                  new Date().getMonth() <= 5 ? 5 : 11, 
+                  new Date().getMonth() <= 5 ? 30 : 31
+                ).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </strong>
             </p>
           </div>
         </div>
@@ -64,7 +81,7 @@ export default function Puntos() {
               <span className="text-gray-400 mr-3 text-xl">⏳</span>
               <div>
                 <strong className="text-gray-800 block mb-1">Política de Caducidad</strong> 
-                <p className="text-xs">Para mantener un ecosistema saludable, los puntos generados tienen una vigencia exacta de 6 meses a partir de tu visita.</p>
+                <p className="text-xs">Para mantener un ecosistema saludable, los puntos generados tienen una vigencia en dos periodos enero-junio y julio-diciembre.</p>
               </div>
             </li>
 
