@@ -18,9 +18,8 @@ export default function Home() {
   // NUEVO ESTADO: ¿Estamos adentro de Phantom?
   const [inPhantomBrowser, setInPhantomBrowser] = useState(false);
 
-  // 🔴🔴🔴 IMPORTANTE: PON AQUÍ TU LINK DE VERCEL 🔴🔴🔴
-  // Ejemplo: "https://cashpark-demo.vercel.app"
-  const URL_VERCEL = "https://tu-proyecto.vercel.app"; 
+  
+  const URL_VERCEL = "https://cashpark-solana.vercel.app/"; 
 
   useEffect(() => {
     setMounted(true);
