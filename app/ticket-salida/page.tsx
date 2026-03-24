@@ -29,7 +29,10 @@ export default function TicketSalida() {
   });
 
   const [puntosGanados, setPuntosGanados] = useState(0);
-  const walletEmpresa = new PublicKey('9RuwDQGNRpZ2Qf7nKiWcU1cL5BegPKCVsoAvhxah8SBf'); 
+  
+  // 👇 AQUÍ ESTÁ EL CAMBIO MAGISTRAL 👇
+  // Tu nueva cuenta recaudadora maestra en Devnet
+  const walletEmpresa = new PublicKey('8S8mmaCtyufGsuw8V4SefotnKgbLqzdJ48evY4uyUeQi'); 
 
   useEffect(() => {
     if (!connected || !publicKey) {
@@ -110,8 +113,8 @@ export default function TicketSalida() {
       
       const nuevaTx = {
         fecha: resumen.fechaSalida,
-        fechaEntrada: resumen.fechaEntrada, // <--- AÑADIMOS ESTO
-        tiempoTotal: resumen.tiempoTotal,   // <--- AÑADIMOS ESTO
+        fechaEntrada: resumen.fechaEntrada, 
+        tiempoTotal: resumen.tiempoTotal,  
         estacionamiento: 'ESTACIONAMIENTO WAYPARK #001',
         montoSOL: resumen.costoSOL,
         puntos: puntosGanados,
